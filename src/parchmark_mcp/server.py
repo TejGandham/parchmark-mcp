@@ -3,8 +3,9 @@
 import os
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 
-from parchmark_mcp.client import ParchMarkClient, ParchMarkError
+from parchmark_mcp.client import ParchMarkClient
 from parchmark_mcp.models import DeleteResponse, Note, NotesListResponse
 
 mcp = FastMCP(
@@ -24,7 +25,7 @@ def get_client() -> ParchMarkClient:
         password = os.environ.get("PARCHMARK_PASSWORD")
 
         if not all([base_url, username, password]):
-            raise ParchMarkError(
+            raise ToolError(
                 "Missing environment variables: PARCHMARK_URL, PARCHMARK_USERNAME, PARCHMARK_PASSWORD"
             )
 

@@ -3,14 +3,9 @@
 from datetime import UTC, datetime, timedelta
 
 import httpx
+from fastmcp.exceptions import ToolError
 
 from parchmark_mcp.models import Note, NoteSummary
-
-
-class ParchMarkError(Exception):
-    """Error from ParchMark API."""
-
-    pass
 
 
 class ParchMarkClient:
@@ -32,7 +27,7 @@ class ParchMarkClient:
             data={"username": self.username, "password": self.password},
         )
         if response.status_code != 200:
-            raise ParchMarkError("Authentication failed - check credentials")
+            raise ToolError("Authentication failed - check credentials")
 
         tokens = response.json()
         self.access_token = tokens["access_token"]
@@ -78,11 +73,11 @@ class ParchMarkClient:
         )
 
         if response.status_code == 401:
-            raise ParchMarkError("Authentication failed - session expired")
+            raise ToolError("Authentication failed - session expired")
         if response.status_code == 404:
-            raise ParchMarkError("Note not found")
+            raise ToolError("Note not found")
         if response.status_code >= 400:
-            raise ParchMarkError(f"API error: {response.status_code}")
+            raise ToolError(f"API error: {response.status_code}")
 
         return response.json()
 
@@ -90,14 +85,14 @@ class ParchMarkClient:
         """Get all notes (without content in response model)."""
         data = await self._request("GET", "/notes/")
         if not isinstance(data, list):
-            raise ParchMarkError("Unexpected response format")
+            raise ToolError("Unexpected response format")
         return [NoteSummary.model_validate(note) for note in data]
 
     async def get_note(self, note_id: str) -> Note:
         """Get a specific note with content."""
         data = await self._request("GET", f"/notes/{note_id}")
         if isinstance(data, list):
-            raise ParchMarkError("Unexpected response format")
+            raise ToolError("Unexpected response format")
         return Note.model_validate(data)
 
     async def create_note(self, content: str) -> Note:
@@ -108,7 +103,7 @@ class ParchMarkClient:
             json_data={"title": "placeholder", "content": content},
         )
         if isinstance(data, list):
-            raise ParchMarkError("Unexpected response format")
+            raise ToolError("Unexpected response format")
         return Note.model_validate(data)
 
     async def update_note(self, note_id: str, content: str) -> Note:
@@ -119,7 +114,7 @@ class ParchMarkClient:
             json_data={"content": content},
         )
         if isinstance(data, list):
-            raise ParchMarkError("Unexpected response format")
+            raise ToolError("Unexpected response format")
         return Note.model_validate(data)
 
     async def delete_note(self, note_id: str) -> None:

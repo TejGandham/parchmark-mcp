@@ -48,14 +48,14 @@ def test_get_client_creates_singleton(mock_env):
 
 def test_get_client_missing_env_raises():
     """get_client raises error if env vars missing."""
-    from parchmark_mcp.client import ParchMarkError
+    from fastmcp.exceptions import ToolError
     import parchmark_mcp.server as server_module
 
     # Reset singleton and clear env
     server_module._client = None
 
     with patch.dict(os.environ, {}, clear=True):
-        with pytest.raises(ParchMarkError, match="Missing environment variables"):
+        with pytest.raises(ToolError, match="Missing environment variables"):
             server_module.get_client()
 
 

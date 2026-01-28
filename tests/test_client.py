@@ -44,12 +44,12 @@ async def test_login_success(client, mock_login: respx.Route) -> None:
 @pytest.mark.asyncio
 async def test_login_failure(client, respx_mock: respx.MockRouter) -> None:
     """Client raises error on login failure."""
-    from parchmark_mcp.client import ParchMarkError
+    from fastmcp.exceptions import ToolError
 
     respx_mock.post("https://api.example.com/auth/login").mock(
         return_value=Response(401, json={"detail": "Invalid credentials"})
     )
-    with pytest.raises(ParchMarkError, match="Authentication failed"):
+    with pytest.raises(ToolError, match="Authentication failed"):
         await client._login()
 
 

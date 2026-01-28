@@ -1,15 +1,18 @@
 """Tests for FastMCP server."""
 
 import os
+from collections.abc import Generator
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
+import parchmark_mcp.server as server_module
 from parchmark_mcp.models import DeleteResponse, Note, NotesListResponse, NoteSummary
 
 
 @pytest.fixture
-def mock_env(monkeypatch):
+def mock_env(monkeypatch: pytest.MonkeyPatch) -> None:
     """Set required environment variables."""
     monkeypatch.setenv("PARCHMARK_URL", "https://api.example.com")
     monkeypatch.setenv("PARCHMARK_USERNAME", "testuser")
@@ -17,22 +20,23 @@ def mock_env(monkeypatch):
 
 
 @pytest.fixture
-def mock_client():
+def mock_client() -> Generator[AsyncMock, None, None]:
     """Create mock ParchMarkClient."""
-    with patch("parchmark_mcp.server._client", None), patch("parchmark_mcp.server.ParchMarkClient") as mock:
+    with (
+        patch.object(server_module, "_client", None),
+        patch.object(server_module, "ParchMarkClient") as mock,
+    ):
         client_instance = AsyncMock()
         mock.return_value = client_instance
         yield client_instance
 
 
-def test_get_client_creates_singleton(mock_env):
+def test_get_client_creates_singleton(mock_env: None) -> None:
     """get_client creates client with env vars and reuses it."""
-    import parchmark_mcp.server as server_module
-
     # Reset singleton
-    server_module._client = None
+    server_module._client = None  # pyright: ignore[reportPrivateUsage]
 
-    with patch("parchmark_mcp.server.ParchMarkClient") as mock:
+    with patch.object(server_module, "ParchMarkClient") as mock:
         # Call twice to verify singleton behavior
         server_module.get_client()
         server_module.get_client()
@@ -46,24 +50,23 @@ def test_get_client_creates_singleton(mock_env):
         )
 
 
-def test_get_client_missing_env_raises():
+def test_get_client_missing_env_raises() -> None:
     """get_client raises error if env vars missing."""
     from fastmcp.exceptions import ToolError
 
-    import parchmark_mcp.server as server_module
-
     # Reset singleton and clear env
-    server_module._client = None
+    server_module._client = None  # pyright: ignore[reportPrivateUsage]
 
-    with patch.dict(os.environ, {}, clear=True), pytest.raises(ToolError, match="Missing environment variables"):
+    with (
+        patch.dict(os.environ, {}, clear=True),
+        pytest.raises(ToolError, match="Missing environment variables"),
+    ):
         server_module.get_client()
 
 
 @pytest.mark.asyncio
-async def test_list_notes_tool(mock_env, mock_client):
+async def test_list_notes_tool(mock_env: None, mock_client: AsyncMock) -> None:
     """list_notes tool returns NotesListResponse."""
-    from datetime import UTC, datetime
-
     from parchmark_mcp.server import list_notes
 
     mock_client.list_notes.return_value = [
@@ -76,7 +79,9 @@ async def test_list_notes_tool(mock_env, mock_client):
     ]
 
     # Access the underlying function via .fn attribute
-    result = await list_notes.fn()
+    tool = list_notes
+    assert hasattr(tool, "fn")
+    result = await tool.fn()  # type: ignore[union-attr]
 
     assert isinstance(result, NotesListResponse)
     assert result.count == 1
@@ -84,10 +89,8 @@ async def test_list_notes_tool(mock_env, mock_client):
 
 
 @pytest.mark.asyncio
-async def test_get_note_tool(mock_env, mock_client):
+async def test_get_note_tool(mock_env: None, mock_client: AsyncMock) -> None:
     """get_note tool returns Note."""
-    from datetime import UTC, datetime
-
     from parchmark_mcp.server import get_note
 
     mock_client.get_note.return_value = Note(
@@ -99,7 +102,9 @@ async def test_get_note_tool(mock_env, mock_client):
     )
 
     # Access the underlying function via .fn attribute
-    result = await get_note.fn("note-123")
+    tool = get_note
+    assert hasattr(tool, "fn")
+    result = await tool.fn("note-123")  # type: ignore[union-attr]
 
     assert isinstance(result, Note)
     assert result.id == "note-123"
@@ -107,10 +112,8 @@ async def test_get_note_tool(mock_env, mock_client):
 
 
 @pytest.mark.asyncio
-async def test_create_note_tool(mock_env, mock_client):
+async def test_create_note_tool(mock_env: None, mock_client: AsyncMock) -> None:
     """create_note tool returns created Note."""
-    from datetime import UTC, datetime
-
     from parchmark_mcp.server import create_note
 
     mock_client.create_note.return_value = Note(
@@ -122,7 +125,9 @@ async def test_create_note_tool(mock_env, mock_client):
     )
 
     # Access the underlying function via .fn attribute
-    result = await create_note.fn("# New Note")
+    tool = create_note
+    assert hasattr(tool, "fn")
+    result = await tool.fn("# New Note")  # type: ignore[union-attr]
 
     assert isinstance(result, Note)
     assert result.id == "note-new"
@@ -130,10 +135,8 @@ async def test_create_note_tool(mock_env, mock_client):
 
 
 @pytest.mark.asyncio
-async def test_update_note_tool(mock_env, mock_client):
+async def test_update_note_tool(mock_env: None, mock_client: AsyncMock) -> None:
     """update_note tool returns updated Note."""
-    from datetime import UTC, datetime
-
     from parchmark_mcp.server import update_note
 
     mock_client.update_note.return_value = Note(
@@ -145,7 +148,9 @@ async def test_update_note_tool(mock_env, mock_client):
     )
 
     # Access the underlying function via .fn attribute
-    result = await update_note.fn("note-123", "# Updated Note")
+    tool = update_note
+    assert hasattr(tool, "fn")
+    result = await tool.fn("note-123", "# Updated Note")  # type: ignore[union-attr]
 
     assert isinstance(result, Note)
     assert result.id == "note-123"
@@ -153,14 +158,16 @@ async def test_update_note_tool(mock_env, mock_client):
 
 
 @pytest.mark.asyncio
-async def test_delete_note_tool(mock_env, mock_client):
+async def test_delete_note_tool(mock_env: None, mock_client: AsyncMock) -> None:
     """delete_note tool returns DeleteResponse."""
     from parchmark_mcp.server import delete_note
 
     mock_client.delete_note.return_value = None
 
     # Access the underlying function via .fn attribute
-    result = await delete_note.fn("note-123")
+    tool = delete_note
+    assert hasattr(tool, "fn")
+    result = await tool.fn("note-123")  # type: ignore[union-attr]
 
     assert isinstance(result, DeleteResponse)
     assert result.success is True

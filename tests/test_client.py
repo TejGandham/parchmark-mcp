@@ -4,12 +4,12 @@ import pytest
 import respx
 from httpx import Response
 
+from parchmark_mcp.client import ParchMarkClient
+
 
 @pytest.fixture
-def client():
+def client() -> ParchMarkClient:
     """Create test client."""
-    from parchmark_mcp.client import ParchMarkClient
-
     return ParchMarkClient(
         base_url="https://api.example.com",
         username="testuser",
@@ -33,16 +33,16 @@ def mock_login(respx_mock: respx.MockRouter) -> respx.Route:
 
 
 @pytest.mark.asyncio
-async def test_login_success(client, mock_login: respx.Route) -> None:
+async def test_login_success(client: ParchMarkClient, mock_login: respx.Route) -> None:
     """Client stores tokens after successful login."""
-    await client._login()
+    await client._login()  # pyright: ignore[reportPrivateUsage]
     assert client.access_token == "test-access-token"
     assert client.refresh_token == "test-refresh-token"
     assert mock_login.called
 
 
 @pytest.mark.asyncio
-async def test_login_failure(client, respx_mock: respx.MockRouter) -> None:
+async def test_login_failure(client: ParchMarkClient, respx_mock: respx.MockRouter) -> None:
     """Client raises error on login failure."""
     from fastmcp.exceptions import ToolError
 
@@ -50,12 +50,12 @@ async def test_login_failure(client, respx_mock: respx.MockRouter) -> None:
         return_value=Response(401, json={"detail": "Invalid credentials"})
     )
     with pytest.raises(ToolError, match="Authentication failed"):
-        await client._login()
+        await client._login()  # pyright: ignore[reportPrivateUsage]
 
 
 @pytest.mark.asyncio
 async def test_list_notes(
-    client,
+    client: ParchMarkClient,
     mock_login: respx.Route,
     respx_mock: respx.MockRouter,
 ) -> None:
@@ -81,7 +81,7 @@ async def test_list_notes(
 
 @pytest.mark.asyncio
 async def test_get_note(
-    client,
+    client: ParchMarkClient,
     mock_login: respx.Route,
     respx_mock: respx.MockRouter,
 ) -> None:
@@ -105,7 +105,7 @@ async def test_get_note(
 
 @pytest.mark.asyncio
 async def test_create_note(
-    client,
+    client: ParchMarkClient,
     mock_login: respx.Route,
     respx_mock: respx.MockRouter,
 ) -> None:
@@ -129,7 +129,7 @@ async def test_create_note(
 
 @pytest.mark.asyncio
 async def test_delete_note(
-    client,
+    client: ParchMarkClient,
     mock_login: respx.Route,
     respx_mock: respx.MockRouter,
 ) -> None:

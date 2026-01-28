@@ -1,0 +1,164 @@
+"""Tests for FastMCP server."""
+
+import os
+from unittest.mock import AsyncMock, patch
+
+import pytest
+
+from parchmark_mcp.models import Note, NoteSummary, NotesListResponse, DeleteResponse
+
+
+@pytest.fixture
+def mock_env(monkeypatch):
+    """Set required environment variables."""
+    monkeypatch.setenv("PARCHMARK_URL", "https://api.example.com")
+    monkeypatch.setenv("PARCHMARK_USERNAME", "testuser")
+    monkeypatch.setenv("PARCHMARK_PASSWORD", "testpass")
+
+
+@pytest.fixture
+def mock_client():
+    """Create mock ParchMarkClient."""
+    with patch("parchmark_mcp.server._client", None):
+        with patch("parchmark_mcp.server.ParchMarkClient") as mock:
+            client_instance = AsyncMock()
+            mock.return_value = client_instance
+            yield client_instance
+
+
+def test_get_client_creates_singleton(mock_env):
+    """get_client creates client with env vars and reuses it."""
+    import parchmark_mcp.server as server_module
+
+    # Reset singleton
+    server_module._client = None
+
+    with patch("parchmark_mcp.server.ParchMarkClient") as mock:
+        client1 = server_module.get_client()
+        client2 = server_module.get_client()
+
+        # Should only create once
+        assert mock.call_count == 1
+        mock.assert_called_with(
+            base_url="https://api.example.com",
+            username="testuser",
+            password="testpass",
+        )
+
+
+def test_get_client_missing_env_raises():
+    """get_client raises error if env vars missing."""
+    from parchmark_mcp.client import ParchMarkError
+    import parchmark_mcp.server as server_module
+
+    # Reset singleton and clear env
+    server_module._client = None
+
+    with patch.dict(os.environ, {}, clear=True):
+        with pytest.raises(ParchMarkError, match="Missing environment variables"):
+            server_module.get_client()
+
+
+@pytest.mark.asyncio
+async def test_list_notes_tool(mock_env, mock_client):
+    """list_notes tool returns NotesListResponse."""
+    from parchmark_mcp.server import list_notes
+    from datetime import datetime, UTC
+
+    mock_client.list_notes.return_value = [
+        NoteSummary(
+            id="note-1",
+            title="Test",
+            createdAt=datetime.now(UTC),
+            updatedAt=datetime.now(UTC),
+        )
+    ]
+
+    # Access the underlying function via .fn attribute
+    result = await list_notes.fn()
+
+    assert isinstance(result, NotesListResponse)
+    assert result.count == 1
+    assert result.notes[0].id == "note-1"
+
+
+@pytest.mark.asyncio
+async def test_get_note_tool(mock_env, mock_client):
+    """get_note tool returns Note."""
+    from parchmark_mcp.server import get_note
+    from datetime import datetime, UTC
+
+    mock_client.get_note.return_value = Note(
+        id="note-123",
+        title="Test",
+        content="# Test",
+        createdAt=datetime.now(UTC),
+        updatedAt=datetime.now(UTC),
+    )
+
+    # Access the underlying function via .fn attribute
+    result = await get_note.fn("note-123")
+
+    assert isinstance(result, Note)
+    assert result.id == "note-123"
+    mock_client.get_note.assert_called_with("note-123")
+
+
+@pytest.mark.asyncio
+async def test_create_note_tool(mock_env, mock_client):
+    """create_note tool returns created Note."""
+    from parchmark_mcp.server import create_note
+    from datetime import datetime, UTC
+
+    mock_client.create_note.return_value = Note(
+        id="note-new",
+        title="New Note",
+        content="# New Note",
+        createdAt=datetime.now(UTC),
+        updatedAt=datetime.now(UTC),
+    )
+
+    # Access the underlying function via .fn attribute
+    result = await create_note.fn("# New Note")
+
+    assert isinstance(result, Note)
+    assert result.id == "note-new"
+    mock_client.create_note.assert_called_with("# New Note")
+
+
+@pytest.mark.asyncio
+async def test_update_note_tool(mock_env, mock_client):
+    """update_note tool returns updated Note."""
+    from parchmark_mcp.server import update_note
+    from datetime import datetime, UTC
+
+    mock_client.update_note.return_value = Note(
+        id="note-123",
+        title="Updated Note",
+        content="# Updated Note",
+        createdAt=datetime.now(UTC),
+        updatedAt=datetime.now(UTC),
+    )
+
+    # Access the underlying function via .fn attribute
+    result = await update_note.fn("note-123", "# Updated Note")
+
+    assert isinstance(result, Note)
+    assert result.id == "note-123"
+    mock_client.update_note.assert_called_with("note-123", "# Updated Note")
+
+
+@pytest.mark.asyncio
+async def test_delete_note_tool(mock_env, mock_client):
+    """delete_note tool returns DeleteResponse."""
+    from parchmark_mcp.server import delete_note
+
+    mock_client.delete_note.return_value = None
+
+    # Access the underlying function via .fn attribute
+    result = await delete_note.fn("note-123")
+
+    assert isinstance(result, DeleteResponse)
+    assert result.success is True
+    assert "note-123" in result.message
+    mock_client.delete_note.assert_called_with("note-123")

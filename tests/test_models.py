@@ -36,7 +36,7 @@ def test_note_includes_content() -> None:
 
 def test_notes_list_response() -> None:
     """NotesListResponse contains notes and count."""
-    from parchmark_mcp.models import NoteSummary, NotesListResponse
+    from parchmark_mcp.models import NotesListResponse, NoteSummary
 
     summary = NoteSummary(
         id="note-1",

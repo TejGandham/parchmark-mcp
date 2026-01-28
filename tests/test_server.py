@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from parchmark_mcp.models import Note, NoteSummary, NotesListResponse, DeleteResponse
+from parchmark_mcp.models import DeleteResponse, Note, NotesListResponse, NoteSummary
 
 
 @pytest.fixture
@@ -19,11 +19,10 @@ def mock_env(monkeypatch):
 @pytest.fixture
 def mock_client():
     """Create mock ParchMarkClient."""
-    with patch("parchmark_mcp.server._client", None):
-        with patch("parchmark_mcp.server.ParchMarkClient") as mock:
-            client_instance = AsyncMock()
-            mock.return_value = client_instance
-            yield client_instance
+    with patch("parchmark_mcp.server._client", None), patch("parchmark_mcp.server.ParchMarkClient") as mock:
+        client_instance = AsyncMock()
+        mock.return_value = client_instance
+        yield client_instance
 
 
 def test_get_client_creates_singleton(mock_env):
@@ -34,8 +33,9 @@ def test_get_client_creates_singleton(mock_env):
     server_module._client = None
 
     with patch("parchmark_mcp.server.ParchMarkClient") as mock:
-        client1 = server_module.get_client()
-        client2 = server_module.get_client()
+        # Call twice to verify singleton behavior
+        server_module.get_client()
+        server_module.get_client()
 
         # Should only create once
         assert mock.call_count == 1
@@ -49,21 +49,22 @@ def test_get_client_creates_singleton(mock_env):
 def test_get_client_missing_env_raises():
     """get_client raises error if env vars missing."""
     from fastmcp.exceptions import ToolError
+
     import parchmark_mcp.server as server_module
 
     # Reset singleton and clear env
     server_module._client = None
 
-    with patch.dict(os.environ, {}, clear=True):
-        with pytest.raises(ToolError, match="Missing environment variables"):
-            server_module.get_client()
+    with patch.dict(os.environ, {}, clear=True), pytest.raises(ToolError, match="Missing environment variables"):
+        server_module.get_client()
 
 
 @pytest.mark.asyncio
 async def test_list_notes_tool(mock_env, mock_client):
     """list_notes tool returns NotesListResponse."""
+    from datetime import UTC, datetime
+
     from parchmark_mcp.server import list_notes
-    from datetime import datetime, UTC
 
     mock_client.list_notes.return_value = [
         NoteSummary(
@@ -85,8 +86,9 @@ async def test_list_notes_tool(mock_env, mock_client):
 @pytest.mark.asyncio
 async def test_get_note_tool(mock_env, mock_client):
     """get_note tool returns Note."""
+    from datetime import UTC, datetime
+
     from parchmark_mcp.server import get_note
-    from datetime import datetime, UTC
 
     mock_client.get_note.return_value = Note(
         id="note-123",
@@ -107,8 +109,9 @@ async def test_get_note_tool(mock_env, mock_client):
 @pytest.mark.asyncio
 async def test_create_note_tool(mock_env, mock_client):
     """create_note tool returns created Note."""
+    from datetime import UTC, datetime
+
     from parchmark_mcp.server import create_note
-    from datetime import datetime, UTC
 
     mock_client.create_note.return_value = Note(
         id="note-new",
@@ -129,8 +132,9 @@ async def test_create_note_tool(mock_env, mock_client):
 @pytest.mark.asyncio
 async def test_update_note_tool(mock_env, mock_client):
     """update_note tool returns updated Note."""
+    from datetime import UTC, datetime
+
     from parchmark_mcp.server import update_note
-    from datetime import datetime, UTC
 
     mock_client.update_note.return_value = Note(
         id="note-123",

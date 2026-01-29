@@ -24,7 +24,7 @@ class ParchMarkClient:
         """Authenticate and store tokens."""
         response = await self._http.post(
             f"{self.base_url}/auth/login",
-            data={"username": self.username, "password": self.password},
+            json={"username": self.username, "password": self.password},
         )
         if response.status_code != 200:
             raise ToolError("Authentication failed - check credentials")

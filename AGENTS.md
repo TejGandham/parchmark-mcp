@@ -176,14 +176,51 @@ If hooks fail, fix issues and re-commit.
 3. Add tests in `test_client.py` (with respx) and `test_server.py` (with mocked client)
 4. Run `uv run pytest tests/ -v` and `uv run pyright src/ tests/`
 
-## Session Completion
+## Task Tracking with Beads
 
-Work is NOT complete until:
+This repo uses [beads](https://github.com/steveyegge/beads) (`bd`) for task tracking.
 
 ```bash
-uv run pytest tests/ -v           # All tests pass
-uv run ruff check src/ tests/     # No lint errors
-uv run pyright src/ tests/        # No type errors
-git add <files> && git commit     # Pre-commit hooks pass
-git push                          # Pushed to remote
+# View tasks
+bd ready              # Show unblocked tasks ready for work
+bd list               # Show all open issues
+bd show <id>          # Show issue details
+
+# Create tasks
+bd create "Title"     # Create new issue (opens editor for description)
+bd create -m "Title"  # Create issue with just a title
+
+# Update tasks
+bd close <id>         # Close a completed issue
+bd edit <id>          # Edit issue details
+bd dep add <id> <dep> # Add dependency between issues
+
+# Sync
+bd sync               # Sync beads state with git
 ```
+
+## Landing the Plane (Session Completion)
+
+**When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
+
+**MANDATORY WORKFLOW:**
+
+1. **File issues for remaining work** - Create issues for anything that needs follow-up
+2. **Run quality gates** (if code changed) - Tests, linters, builds
+3. **Update issue status** - Close finished work, update in-progress items
+4. **PUSH TO REMOTE** - This is MANDATORY:
+   ```bash
+   git pull --rebase
+   bd sync
+   git push
+   git status  # MUST show "up to date with origin"
+   ```
+5. **Clean up** - Clear stashes, prune remote branches
+6. **Verify** - All changes committed AND pushed
+7. **Hand off** - Provide context for next session
+
+**CRITICAL RULES:**
+- Work is NOT complete until `git push` succeeds
+- NEVER stop before pushing - that leaves work stranded locally
+- NEVER say "ready to push when you are" - YOU must push
+- If push fails, resolve and retry until it succeeds
